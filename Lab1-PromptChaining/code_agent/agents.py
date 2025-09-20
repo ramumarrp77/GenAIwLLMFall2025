@@ -7,7 +7,7 @@ AGENT_MODELS = {
     'code_generation': 'claude-3-5-sonnet',    # Best for code generation
     'test_generation': 'llama4-maverick',    # Excellent for testing
     'requirements': 'mixtral-8x7b',          # Good for requirements analysis
-    'documentation': 'reka-flash',             # Great for documentation
+    'documentation': 'llama4-scout',             # Great for documentation
     'validation': 'mistral-7b'               # Fast and efficient validation
 }
 

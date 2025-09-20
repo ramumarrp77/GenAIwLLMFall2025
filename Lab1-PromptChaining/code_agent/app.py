@@ -51,9 +51,14 @@ SNOWFLAKE_SCHEMA=your_schema
     
     # Example prompts
     examples = [
-        "Create a CSV data validator",
-        "Build a web scraper for news",
-        "Create a REST API with FastAPI"
+        "Create a personal expense tracker with category analysis",
+        "Build a password generator with customizable security levels", 
+        "Create a JSON to CSV converter with validation",
+        "Build a simple chat bot for customer support",
+        "Create a file organizer that sorts by date and type",
+        "Build a URL shortener with analytics tracking",
+        "Create a markdown to HTML converter",
+        "Build a weather data aggregator from multiple APIs"
     ]
     
     selected_example = st.selectbox("Example prompts:", [""] + examples)
