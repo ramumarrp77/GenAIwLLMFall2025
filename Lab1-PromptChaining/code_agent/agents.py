@@ -4,11 +4,11 @@ from agent_prompts import *
 
 # Model configuration for each agent type
 AGENT_MODELS = {
-    'code_generation': 'claude-3-5-sonnet',    # Best for code generation
-    'test_generation': 'llama4-maverick',    # Excellent for testing
-    'requirements': 'mixtral-8x7b',          # Good for requirements analysis
-    'documentation': 'llama4-scout',             # Great for documentation
-    'validation': 'mistral-7b'               # Fast and efficient validation
+    'code_generation': 'claude-3-5-sonnet',    
+    'test_generation': 'llama4-maverick',  
+    'requirements': 'mixtral-8x7b',          
+    'documentation': 'llama4-scout',            
+    'validation': 'mistral-7b'              
 }
 
 class CodeGenerationAgent:

@@ -21,13 +21,13 @@ def get_snowflake_connection():
         print(f"Connection failed: {e}")
         return None
 
-def call_cortex_complete(prompt: str, model: str = 'claude-4-sonnet') -> str:
+def call_cortex_complete(prompt: str, model: str = 'claude-3-5-sonnet') -> str:
     """
     Call Snowflake Cortex Complete function with specified model
     
     Args:
         prompt: The prompt to send to the model
-        model: The model to use (default: claude-4-sonnet)
+        model: The model to use (default: claude-3-5-sonnet)
     
     Returns:
         Generated response from the model
