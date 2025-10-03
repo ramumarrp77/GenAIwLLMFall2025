@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+from datetime import datetime
 from langchain.schema.runnable import RunnableParallel, RunnableLambda
 from agents.sentiment_agent import SentimentAgent
 from agents.feature_agent import FeatureAgent
@@ -28,44 +29,58 @@ class ParallelChain:
     def _execute_parallel(self, user_query: str, show_backend: bool, agent_times: dict):
         """Execute all agents in parallel using LangChain RunnableParallel"""
         
-        st.write("🔀 **Running 4 agents in parallel...**")
+        st.write("⚡ **Running 4 agents in parallel...**")
         
-        # Create progress placeholders
+        execution_tracking = {
+            'Sentiment': {'start': None, 'end': None, 'duration': 0},
+            'Features': {'start': None, 'end': None, 'duration': 0},
+            'News': {'start': None, 'end': None, 'duration': 0},
+            'Quality': {'start': None, 'end': None, 'duration': 0}
+        }
+        
         progress_cols = st.columns(4)
         status_placeholders = {}
         for i, agent_name in enumerate(['Sentiment', 'Features', 'News', 'Quality']):
             with progress_cols[i]:
                 status_placeholders[agent_name] = st.empty()
-                status_placeholders[agent_name].info(f"⏳ {agent_name} Agent")
+                status_placeholders[agent_name].info(f"⏳ {agent_name}")
         
-        # Create LangChain RunnableParallel
         parallel_runnable = RunnableParallel(
-            sentiment=RunnableLambda(lambda x: self._run_with_timing(
-                self.sentiment_agent, x, 'Sentiment', status_placeholders, agent_times, show_backend
+            sentiment=RunnableLambda(lambda x: self._run_agent_with_tracking(
+                self.sentiment_agent, x, 'Sentiment', execution_tracking, show_backend
             )),
-            features=RunnableLambda(lambda x: self._run_with_timing(
-                self.feature_agent, x, 'Features', status_placeholders, agent_times, show_backend
+            features=RunnableLambda(lambda x: self._run_agent_with_tracking(
+                self.feature_agent, x, 'Features', execution_tracking, show_backend
             )),
-            news=RunnableLambda(lambda x: self._run_with_timing(
-                self.news_agent, x, 'News', status_placeholders, agent_times, show_backend
+            news=RunnableLambda(lambda x: self._run_agent_with_tracking(
+                self.news_agent, x, 'News', execution_tracking, show_backend
             )),
-            quality=RunnableLambda(lambda x: self._run_with_timing(
-                self.quality_agent, x, 'Quality', status_placeholders, agent_times, show_backend
+            quality=RunnableLambda(lambda x: self._run_agent_with_tracking(
+                self.quality_agent, x, 'Quality', execution_tracking, show_backend
             ))
         )
         
-        # Execute all agents in parallel
         parallel_start = time.time()
         parallel_results = parallel_runnable.invoke({"query": user_query})
         parallel_time = time.time() - parallel_start
         
-        # Update all statuses to complete
-        for agent_name in ['Sentiment', 'Features', 'News', 'Quality']:
-            status_placeholders[agent_name].success(f"✅ {agent_name} ({agent_times.get(agent_name, 0):.2f}s)")
+        st.write("**Agent Execution Timeline:**")
+        timing_cols = st.columns(4)
         
-        st.write(f"⚡ **All agents completed in {parallel_time:.2f} seconds**")
+        for i, agent_name in enumerate(['Sentiment', 'Features', 'News', 'Quality']):
+            tracking = execution_tracking[agent_name]
+            with timing_cols[i]:
+                status_placeholders[agent_name].success(f"✅ {agent_name}")
+                st.metric(
+                    label="Duration",
+                    value=f"{tracking['duration']:.2f}s"
+                )
+                if tracking['start'] and tracking['end']:
+                    st.caption(f"Start: {tracking['start']}")
+                    st.caption(f"End: {tracking['end']}")
         
-        # Sequential aggregation step
+        st.write(f"⚡ **Total parallel execution: {parallel_time:.2f} seconds**")
+        
         st.markdown("---")
         st.write("📊 **Step 5: Aggregating Results**")
         
@@ -75,6 +90,9 @@ class ParallelChain:
         
         st.success(f"✅ Aggregator completed in {agg_time:.2f}s")
         
+        for agent_name, tracking in execution_tracking.items():
+            agent_times[agent_name] = tracking['duration']
+        
         return {
             'sentiment': parallel_results['sentiment'],
             'features': parallel_results['features'],
@@ -82,6 +100,7 @@ class ParallelChain:
             'quality': parallel_results['quality'],
             'final_report': final_report,
             'agent_times': agent_times,
+            'execution_tracking': execution_tracking,
             'total_time': parallel_time + agg_time
         }
     
@@ -91,36 +110,48 @@ class ParallelChain:
         st.write("🔄 **Running agents sequentially...**")
         
         results = {}
+        execution_tracking = {}
         
-        # Agent 1: Sentiment
         st.write("**Step 1: Sentiment Analysis Agent**")
         start = time.time()
+        start_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         results['sentiment'] = self.sentiment_agent.execute(user_query, show_backend)
-        agent_times['Sentiment'] = time.time() - start
-        st.success(f"✅ Sentiment Agent completed ({agent_times['Sentiment']:.2f}s)")
+        end_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        duration = time.time() - start
+        agent_times['Sentiment'] = duration
+        execution_tracking['Sentiment'] = {'start': start_time, 'end': end_time, 'duration': duration}
+        st.success(f"✅ Sentiment: {start_time} → {end_time} ({duration:.2f}s)")
         
-        # Agent 2: Features
         st.write("**Step 2: Feature Extraction Agent**")
         start = time.time()
+        start_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         results['features'] = self.feature_agent.execute(user_query, show_backend)
-        agent_times['Features'] = time.time() - start
-        st.success(f"✅ Feature Agent completed ({agent_times['Features']:.2f}s)")
+        end_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        duration = time.time() - start
+        agent_times['Features'] = duration
+        execution_tracking['Features'] = {'start': start_time, 'end': end_time, 'duration': duration}
+        st.success(f"✅ Features: {start_time} → {end_time} ({duration:.2f}s)")
         
-        # Agent 3: News
         st.write("**Step 3: News Context Agent**")
         start = time.time()
+        start_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         results['news'] = self.news_agent.execute(user_query, show_backend)
-        agent_times['News'] = time.time() - start
-        st.success(f"✅ News Agent completed ({agent_times['News']:.2f}s)")
+        end_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        duration = time.time() - start
+        agent_times['News'] = duration
+        execution_tracking['News'] = {'start': start_time, 'end': end_time, 'duration': duration}
+        st.success(f"✅ News: {start_time} → {end_time} ({duration:.2f}s)")
         
-        # Agent 4: Quality
         st.write("**Step 4: Quality Analysis Agent**")
         start = time.time()
+        start_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         results['quality'] = self.quality_agent.execute(user_query, show_backend)
-        agent_times['Quality'] = time.time() - start
-        st.success(f"✅ Quality Agent completed ({agent_times['Quality']:.2f}s)")
+        end_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        duration = time.time() - start
+        agent_times['Quality'] = duration
+        execution_tracking['Quality'] = {'start': start_time, 'end': end_time, 'duration': duration}
+        st.success(f"✅ Quality: {start_time} → {end_time} ({duration:.2f}s)")
         
-        # Aggregation
         st.markdown("---")
         st.write("**Step 5: Aggregating Results**")
         start = time.time()
@@ -135,19 +166,24 @@ class ParallelChain:
             **results,
             'final_report': final_report,
             'agent_times': agent_times,
+            'execution_tracking': execution_tracking,
             'total_time': total_time
         }
     
-    def _run_with_timing(self, agent, input_data, agent_name, status_placeholders, agent_times, show_backend):
-        """Execute agent with timing and status updates"""
-        status_placeholders[agent_name].warning(f"⏳ {agent_name} Running...")
-        
+    def _run_agent_with_tracking(self, agent, input_data, agent_name, execution_tracking, show_backend):
+        """Execute agent with start/end time tracking - NO Streamlit UI calls"""
         start = time.time()
-        result = agent.execute(input_data['query'], show_backend)
-        execution_time = time.time() - start
+        start_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         
-        agent_times[agent_name] = execution_time
+        result = agent.execute(input_data['query'], show_backend)
+        
+        end_time = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        duration = time.time() - start
+        
+        execution_tracking[agent_name] = {
+            'start': start_time,
+            'end': end_time,
+            'duration': duration
+        }
+        
         return result
-
-if __name__ == "__main__":
-    main()

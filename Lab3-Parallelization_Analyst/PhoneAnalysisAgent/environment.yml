@@ -1,0 +1,12 @@
+name: app_environment
+channels:
+  - snowflake
+dependencies:
+  - langchain=0.3.25
+  - langchain-community=0.3.12
+  - langchain-core=0.3.58
+  - python=3.11.*
+  - python-dotenv=1.1.0
+  - requests=2.32.5
+  - snowflake-snowpark-python=
+  - streamlit=
