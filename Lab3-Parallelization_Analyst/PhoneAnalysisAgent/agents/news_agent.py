@@ -13,33 +13,41 @@ class NewsAgent:
     def execute(self, user_query: str, show_backend: bool = False) -> str:
         """Fetch recent iPhone news using SerpAPI"""
         
-        # Extract search terms
-        search_prompt = f"""Extract iPhone-related search keywords from: {user_query}
-Return ONLY the search keywords, no additional text."""
+        # Extract focused search terms (2-3 keywords max)
+        search_prompt = f"""Extract 2-3 core search phrases only.
+
+User query: {user_query}
+
+Return ONLY 2-3 main key phrases separated by spaces. Be concise.
+Example: "phone camera quality" or "phone battery life"
+
+Your output:"""
         
         search_terms = call_cortex_complete(search_prompt, self.model)
+        # Limit to 50 characters and strip whitespace
+        search_terms = search_terms.strip()[:50]
         
         if show_backend:
             with st.expander("🔧 News Agent - Backend Process", expanded=False):
                 st.write("**Step 1: Search Term Extraction**")
                 st.write(f"Extracted terms: {search_terms}")
                 st.write("**Step 2: SerpAPI Call**")
-                st.code(f"Query: iPhone {search_terms} news recent")
+                st.code(f"Query: iPhone {search_terms} news")
         
         # Fetch news from SerpAPI
         news_data = self._fetch_news(search_terms)
         
         # Analyze news with LLM
-        analysis_prompt = f"""You are a News Context Specialist. Summarize this iPhone news data.
+        analysis_prompt = f"""Summarize this iPhone news briefly.
 
 News data: {news_data}
 User query: {user_query}
 
-Provide brief news summary:
+Provide concise summary:
 - Recent Updates: [Key news points]
-- Relevant Context: [How this relates to user query]
+- Relevance: [Connection to user query]
 
-Return ONLY the news summary, no additional text."""
+Return ONLY the summary, no additional text."""
 
         result = call_cortex_complete(analysis_prompt, self.model)
         
@@ -61,8 +69,8 @@ Return ONLY the news summary, no additional text."""
             params = {
                 "api_key": self.serpapi_key,
                 "engine": "google",
-                "q": f"iPhone {search_terms} news recent",
-                "num": 5,
+                "q": f"iPhone {search_terms} news",
+                "num": 3,
                 "gl": "us",
                 "hl": "en"
             }
@@ -76,7 +84,7 @@ Return ONLY the news summary, no additional text."""
             news_items = []
             
             if "organic_results" in data:
-                for result in data["organic_results"][:5]:
+                for result in data["organic_results"][:3]:
                     if "snippet" in result:
                         news_items.append(f"{result.get('title', 'No title')}: {result['snippet']}")
             
