@@ -51,6 +51,7 @@ def run_cover_letter_generation(uploaded_file, job_url, max_iterations=3, qualit
         'quality_threshold': quality_threshold,
         'resume_text': '',
         'job_text': '',
+        'contact_info': {},  # Will be populated during extraction
         'drafts': [],
         'critiques': [],
         'current_iteration': 0,
@@ -73,6 +74,7 @@ def run_cover_letter_generation(uploaded_file, job_url, max_iterations=3, qualit
     print(f"Total iterations: {final_state['current_iteration']}")
     print(f"Final score: {final_state['critiques'][-1]['overall_score']}/10")
     print(f"Stop reason: {final_state['stop_reason']}")
+    print(f"Contact info extracted: {final_state['contact_info']['name']}")
     print("="*70 + "\n")
     
     return final_state

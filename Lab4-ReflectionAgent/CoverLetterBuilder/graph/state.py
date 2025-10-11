@@ -14,6 +14,7 @@ class State(TypedDict):
     # Extracted data
     resume_text: str
     job_text: str
+    contact_info: Dict  # Automatically extracted from resume (name, email, phone, address)
     
     # Generated content (grows with each iteration)
     drafts: List[str]

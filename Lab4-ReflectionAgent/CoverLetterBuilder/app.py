@@ -3,6 +3,8 @@
 import streamlit as st
 import plotly.graph_objects as go
 from graph import run_cover_letter_generation
+from agents import format_cover_letter
+from utils import create_docx, create_pdf
 from config import DEFAULT_MAX_ITERATIONS, DEFAULT_QUALITY_THRESHOLD
 
 # Page config
@@ -54,7 +56,7 @@ st.sidebar.info(f"""
 **Current Settings:**
 - Max iterations: {max_iterations}
 - Quality threshold: {quality_threshold}/10
-- Agent will stop when either condition is met
+- Contact info will be extracted automatically from resume
 """)
 
 # Main area
@@ -74,11 +76,14 @@ if st.sidebar.button("🚀 Generate Cover Letter", type="primary", use_container
         with col2:
             job_status = st.empty()
         
+        contact_info_display = st.container()
+        extraction_display = st.container()
         results_container = st.container()
         
         try:
             # Show initial status
             status_container.info("🔄 Starting cover letter generation...")
+            progress_bar.progress(10)
             
             # Run the workflow
             with st.spinner("Processing..."):
@@ -89,12 +94,97 @@ if st.sidebar.button("🚀 Generate Cover Letter", type="primary", use_container
                     quality_threshold
                 )
             
-            progress_bar.progress(100)
-            status_container.success("✅ Cover letter generation complete!")
+            progress_bar.progress(90)
             
             # Display extraction results
             resume_status.success(f"✅ Resume extracted")
             job_status.success(f"✅ Job description fetched")
+            
+            # Get contact info from state
+            contact_info = final_state['contact_info']
+            
+            # Display extracted contact information
+            with contact_info_display:
+                st.markdown("---")
+                st.subheader("👤 Extracted Contact Information")
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Name", contact_info['name'])
+                
+                with col2:
+                    st.metric("Email", contact_info['email'])
+                
+                with col3:
+                    st.metric("Phone", contact_info['phone'])
+                
+                with col4:
+                    address_display = contact_info['address'][:30] + "..." if len(contact_info['address']) > 30 else contact_info['address']
+                    st.metric("Address", address_display)
+                
+                # Allow manual override if extraction failed
+                with st.expander("✏️ Edit Contact Information (Optional)"):
+                    st.info("If the extracted information is incorrect, you can edit it here:")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        override_name = st.text_input("Name", value=contact_info['name'], key="edit_name")
+                        override_phone = st.text_input("Phone", value=contact_info['phone'], key="edit_phone")
+                    with col2:
+                        override_email = st.text_input("Email", value=contact_info['email'], key="edit_email")
+                        override_address = st.text_input("Address", value=contact_info['address'], key="edit_address")
+                    
+                    if st.button("Update Contact Info"):
+                        contact_info = {
+                            'name': override_name,
+                            'email': override_email,
+                            'phone': override_phone,
+                            'address': override_address
+                        }
+                        st.success("✓ Contact information updated")
+            
+            # Format the final cover letter with extracted contact info
+            status_container.info("📝 Formatting final cover letter...")
+            formatted_letter = format_cover_letter(
+                final_state['drafts'][-1],
+                contact_info['name'],
+                contact_info['address'],
+                contact_info['phone'],
+                contact_info['email']
+            )
+            
+            progress_bar.progress(100)
+            status_container.success("✅ Cover letter generation complete!")
+            
+            # Display extracted content
+            with extraction_display:
+                st.markdown("---")
+                st.header("📄 Extracted Content")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    with st.expander("📝 Resume Content", expanded=False):
+                        st.markdown(f"**Word Count:** {len(final_state['resume_text'].split())} words")
+                        st.text_area(
+                            "Resume Text",
+                            final_state['resume_text'],
+                            height=300,
+                            key="resume_display",
+                            label_visibility="collapsed"
+                        )
+                
+                with col2:
+                    with st.expander("🌐 Job Description", expanded=False):
+                        st.markdown(f"**Word Count:** {len(final_state['job_text'].split())} words")
+                        st.text_area(
+                            "Job Description",
+                            final_state['job_text'],
+                            height=300,
+                            key="job_display",
+                            label_visibility="collapsed"
+                        )
             
             # Display results
             with results_container:
@@ -216,23 +306,53 @@ if st.sidebar.button("🚀 Generate Cover Letter", type="primary", use_container
                             for suggestion in critique['suggestions']:
                                 st.markdown(f"- {suggestion}")
                 
-                # Final download
+                # Display formatted final version
                 st.markdown("---")
-                st.subheader("💾 Download Final Version")
+                st.header("📄 Final Formatted Cover Letter")
                 
-                final_letter = final_state['drafts'][-1]
+                st.text_area(
+                    "Professionally Formatted",
+                    formatted_letter,
+                    height=400,
+                    key="formatted_final",
+                    label_visibility="collapsed"
+                )
                 
-                col1, col2 = st.columns(2)
+                # Download options
+                st.subheader("💾 Download Options")
+                
+                col1, col2, col3 = st.columns(3)
+                
                 with col1:
                     st.download_button(
                         "📄 Download as TXT",
-                        final_letter,
+                        formatted_letter,
                         file_name="cover_letter.txt",
-                        mime="text/plain"
+                        mime="text/plain",
+                        use_container_width=True
                     )
                 
                 with col2:
-                    st.button("📋 Copy to Clipboard", help="Click to copy")
+                    # Create DOCX
+                    docx_buffer = create_docx(formatted_letter)
+                    st.download_button(
+                        "📝 Download as DOCX",
+                        docx_buffer,
+                        file_name="cover_letter.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True
+                    )
+                
+                with col3:
+                    # Create PDF
+                    pdf_bytes = create_pdf(formatted_letter)
+                    st.download_button(
+                        "📕 Download as PDF",
+                        pdf_bytes,
+                        file_name="cover_letter.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
         
         except Exception as e:
             status_container.error(f"❌ Error: {str(e)}")
@@ -242,18 +362,19 @@ else:
     # Show instructions
     st.info("""
     ### How to use:
-    1. Upload your resume (PDF format)
+    1. Upload your resume (PDF format) - contact info will be extracted automatically
     2. Paste the job posting URL
     3. Adjust settings if needed (optional)
     4. Click "Generate Cover Letter"
-    5. Watch the AI agents work in real-time!
+    5. Download in TXT, DOCX, or PDF format!
     
     ### What happens:
-    - **Step 1:** Extract resume & job description (parallel)
+    - **Step 1:** Extract resume, job description, and contact info (parallel)
     - **Step 2:** Producer Agent generates initial draft
     - **Step 3:** Critic Agent evaluates and scores it
     - **Step 4:** Refiner Agent improves based on feedback
-    - **Repeat:** Process continues until quality threshold or max iterations
+    - **Step 5:** Formatter Agent adds professional structure with your contact info
+    - **Repeat:** Steps 2-4 continue until quality threshold or max iterations
     """)
     
     st.markdown("---")

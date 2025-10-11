@@ -3,13 +3,14 @@
 from concurrent.futures import ThreadPoolExecutor
 import time
 
-from utils import extract_resume, fetch_job
+from utils import extract_resume, fetch_job, extract_contact_info
 from agents import generate_cover_letter, refine_cover_letter, critique_cover_letter
 
 
 def extract_data_node(state):
     """
     Node 1: Extract resume and job description in parallel
+    Then extract contact information from resume
     """
     print("\n" + "="*70)
     print("STEP 1: PARALLEL DATA EXTRACTION")
@@ -37,6 +38,12 @@ def extract_data_node(state):
     state['resume_text'] = resume_result['text']
     state['job_text'] = job_result['text']
     
+    # Extract contact information from resume
+    print("Extracting contact information from resume...")
+    contact_info = extract_contact_info(resume_result['text'])
+    state['contact_info'] = contact_info
+    
+    print()
     return state
 
 
