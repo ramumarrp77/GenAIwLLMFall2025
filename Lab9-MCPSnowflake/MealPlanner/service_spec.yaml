@@ -1,0 +1,8 @@
+spec:
+  containers:
+  - name: nutrition-mcp-app
+    image: /lab_db/containers/nutrition_mcp_repo/nutrition-mcp-app:latest
+  endpoints:
+  - name: streamlit
+    port: 8510
+    public: true
